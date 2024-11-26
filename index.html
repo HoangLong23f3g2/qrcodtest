@@ -14,6 +14,7 @@
     #reader {
       width: 300px;
       margin: 0 auto;
+      display: none; /* Ẩn nếu không có camera */
     }
     #upload-section {
       margin-top: 20px;
@@ -35,36 +36,39 @@
   </div>
 
   <script>
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbxUhndw5N5MbHSWhmtAvBW7grLdUKW-jfkkTPEWeYPQV50-MpKn4AZnTEH1F8e6ocGX/exec"; // Thay bằng URL Apps Script của bạn
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbxUhndw5N5MbHSWhmtAvBW7grLdUKW-jfkkTPEWeYPQV50-MpKn4AZnTEH1F8e6ocGX/exec"; // URL Apps Script của bạn
 
-    // Khởi tạo QR Scanner
+    // Kiểm tra camera và khởi động trình quét
     const html5QrCode = new Html5Qrcode("reader");
-    const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-      document.getElementById("result").innerText = `Scanned: ${decodedText}`;
-      
-      // Gửi kết quả tới Google Apps Script
-      fetch(scriptUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ qrData: decodedText }),
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(() => {
+        // Nếu camera khả dụng, hiển thị phần quét qua webcam
+        document.getElementById("reader").style.display = "block";
+        const config = { fps: 10, qrbox: 250 };
+        html5QrCode.start({ facingMode: "environment" }, config, (decodedText, decodedResult) => {
+          document.getElementById("result").innerText = `Scanned: ${decodedText}`;
+          fetch(scriptUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ qrData: decodedText }),
+          })
+          .then(response => response.text())
+          .then(data => {
+            console.log("Response from Apps Script:", data);
+            alert("QR Code saved successfully!");
+          })
+          .catch(error => {
+            console.error("Error:", error);
+            alert("Failed to save QR Code.");
+          });
+        });
       })
-      .then(response => response.text())
-      .then(data => {
-        console.log("Response from Apps Script:", data);
-        alert("QR Code saved successfully!");
-      })
-      .catch(error => {
-        console.error("Error:", error);
-        alert("Failed to save QR Code.");
-      });
-    };
-
-    const config = { fps: 10, qrbox: 250 };
-    html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
-      .catch(err => {
-        console.error("Error starting QR Code scanner:", err);
+      .catch((err) => {
+        // Nếu không có camera, hiển thị lỗi và chỉ cho phép tải ảnh
+        console.error("Camera not available: ", err);
+        alert("No camera detected. You can only upload QR code images.");
       });
 
     // Xử lý khi tải lên hình ảnh
@@ -78,8 +82,6 @@
       html5QrCode.scanFile(file, true)
         .then(decodedText => {
           document.getElementById("result").innerText = `Scanned: ${decodedText}`;
-          
-          // Gửi kết quả tới Google Apps Script
           fetch(scriptUrl, {
             method: "POST",
             headers: {
