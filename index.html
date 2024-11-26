@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+    #reader { width: 300px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <h1>QR Scanner</h1>
+  <div id="reader"></div>
+  <p id="result">Scan a QR code to see the result here.</p>
+
+  <script>
+    // URL của Apps Script
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbxUhndw5N5MbHSWhmtAvBW7grLdUKW-jfkkTPEWeYPQV50-MpKn4AZnTEH1F8e6ocGX/exec"; // Thay bằng URL triển khai Apps Script
+
+    // Khởi tạo QR Scanner
+    const html5QrCode = new Html5Qrcode("reader");
+    const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+      document.getElementById("result").innerText = `Scanned: ${decodedText}`;
+      
+      // Gửi kết quả tới Google Apps Script
+      fetch(scriptUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ qrData: decodedText }),
+      })
+      .then(response => response.text())
+      .then(data => {
+        console.log("Response from Apps Script:", data);
+        alert("QR Code saved successfully!");
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        alert("Failed to save QR Code.");
+      });
+    };
+
+    // Bắt đầu quét mã QR
+    const config = { fps: 10, qrbox: 250 };
+    html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback);
+  </script>
+</body>
+</html>
