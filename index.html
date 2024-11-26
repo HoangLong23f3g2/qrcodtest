@@ -6,18 +6,36 @@
   <title>QR Scanner</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-    #reader { width: 300px; margin: 0 auto; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    #reader {
+      width: 300px;
+      margin: 0 auto;
+    }
+    #upload-section {
+      margin-top: 20px;
+    }
+    input[type="file"] {
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <h1>QR Scanner</h1>
   <div id="reader"></div>
   <p id="result">Scan a QR code to see the result here.</p>
+  
+  <!-- Phần tải lên hình ảnh -->
+  <div id="upload-section">
+    <h3>Or Upload a QR Code Image</h3>
+    <input type="file" id="qr-upload" accept="image/*">
+  </div>
 
   <script>
-    // URL của Apps Script
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbxUhndw5N5MbHSWhmtAvBW7grLdUKW-jfkkTPEWeYPQV50-MpKn4AZnTEH1F8e6ocGX/exec"; // Thay bằng URL triển khai Apps Script
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbxUhndw5N5MbHSWhmtAvBW7grLdUKW-jfkkTPEWeYPQV50-MpKn4AZnTEH1F8e6ocGX/exec"; // Thay bằng URL Apps Script của bạn
 
     // Khởi tạo QR Scanner
     const html5QrCode = new Html5Qrcode("reader");
@@ -43,9 +61,47 @@
       });
     };
 
-    // Bắt đầu quét mã QR
     const config = { fps: 10, qrbox: 250 };
-    html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback);
+    html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+      .catch(err => {
+        console.error("Error starting QR Code scanner:", err);
+      });
+
+    // Xử lý khi tải lên hình ảnh
+    document.getElementById("qr-upload").addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (!file) {
+        alert("No file selected.");
+        return;
+      }
+      
+      html5QrCode.scanFile(file, true)
+        .then(decodedText => {
+          document.getElementById("result").innerText = `Scanned: ${decodedText}`;
+          
+          // Gửi kết quả tới Google Apps Script
+          fetch(scriptUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ qrData: decodedText }),
+          })
+          .then(response => response.text())
+          .then(data => {
+            console.log("Response from Apps Script:", data);
+            alert("QR Code saved successfully!");
+          })
+          .catch(error => {
+            console.error("Error:", error);
+            alert("Failed to save QR Code.");
+          });
+        })
+        .catch(err => {
+          console.error("Error decoding QR Code from file:", err);
+          alert("Failed to decode QR Code from the uploaded file.");
+        });
+    });
   </script>
 </body>
 </html>
